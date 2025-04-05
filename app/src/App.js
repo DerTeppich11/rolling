@@ -2,7 +2,8 @@ import React from 'react';
 import './App.css';
 import Home from './Home';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import GroupList from './GroupList';
+import DiceGame from './DiceGame';
+import Options from './Options';
 import GroupEdit from './GroupEdit';
 
 const App = () => {
@@ -10,7 +11,8 @@ const App = () => {
     <Router>
       <Routes>
         <Route exact path="/" element={<Home/>}/>
-        <Route path='/groups' exact={true} element={<GroupList/>}/>
+        <Route path='/diceGame' exact={true} element={<DiceGame/>}/>
+        <Route path='/options' exact={true} element={<Options/>}/>
         <Route path='/groups/:id' element={<GroupEdit/>}/>
       </Routes>
     </Router>
