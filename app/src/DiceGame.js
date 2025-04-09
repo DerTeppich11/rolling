@@ -3,9 +3,12 @@ import React, { useState, useEffect } from 'react';
 const DiceGame = () => {
     const [dice, setDice] = useState([1, 1, 1, 1, 1, 1]);
     const [heldDice, setHeldDice] = useState([false, false, false, false, false, false]);
+    const [lockedDice, setLockedDice] = useState([false, false, false, false, false, false]);
+    const [numberOfTurns, setNumberOfTurns] = useState(0);
     const [isRolling, setIsRolling] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [bValidHold, setValid] = useState(true);
 
     // Fetch initial state with error handling
     useEffect(() => {
@@ -18,13 +21,13 @@ const DiceGame = () => {
                 const data = await response.json();
                 
                 // Ensure we have valid data
-                setDice(data.dice || [1, 1, 1, 1, 1, 1]);
+                setDice(data.dice || [0, 0, 0, 0, 0, 0]);
                 setHeldDice(data.held || [false, false, false, false, false, false]);
             } catch (err) {
                 console.error("Error fetching initial state:", err);
                 setError(err.message);
                 // Fall back to default values
-                setDice([1, 1, 1, 1, 1, 1]);
+                setDice([0, 0, 0, 0, 0, 0]);
                 setHeldDice([false, false, false, false, false, false]);
             } finally {
                 setIsLoading(false);
@@ -36,9 +39,10 @@ const DiceGame = () => {
 
     const toggleHold = async (index) => {
         try {
-            await fetch(`http://localhost:8080/api/hold/${index}`, {
+            const response = await fetch(`http://localhost:8080/api/hold/${index}`, {
                 method: 'POST'
             });
+            setValid(await response.json());
             const newHeld = [...heldDice];
             newHeld[index] = !newHeld[index];
             setHeldDice(newHeld);
@@ -50,6 +54,17 @@ const DiceGame = () => {
     const rollDice = async () => {
         setIsRolling(true);
         try {
+
+            if (heldDice.length > 0) {
+                const response = await fetch('http://localhost:8080/api/lock-dice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(heldDice)
+                });
+                const newLockedDice = await response.json();
+                setLockedDice(newLockedDice);
+            }
+
             const indicesToRoll = dice.map((_, i) => i).filter(i => !heldDice[i]);
             const response = await fetch('http://localhost:8080/api/roll', {
                 method: 'POST',
@@ -60,6 +75,7 @@ const DiceGame = () => {
             });
             const newDice = await response.json();
             setDice(newDice);
+            setNumberOfTurns(prev => prev + 1);
         } catch (error) {
             console.error("Error rolling dice:", error);
         } finally {
@@ -72,12 +88,24 @@ const DiceGame = () => {
             await fetch('http://localhost:8080/api/reset', {
                 method: 'POST'
             });
-            setDice([1, 1, 1, 1, 1, 1]);
+            setDice([0, 0, 0, 0, 0, 0]);
             setHeldDice([false, false, false, false, false, false]);
+            setNumberOfTurns(0);
         } catch (error) {
             console.error("Error resetting game:", error);
         }
     };
+
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+          resetGame(); // Reset game when page refreshes
+        };
+      
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+      }, []);
 
     if (isLoading) {
         return <div>Loading game...</div>;
@@ -98,14 +126,14 @@ const DiceGame = () => {
                         style={{
                             width: '50px',
                             height: '50px',
-                            backgroundColor: heldDice[index] ? '#4CAF50' : '#fff',
+                            backgroundColor: lockedDice[index] ? '#2E7D32' : heldDice[index] ? '#4CAF50' : '#fff',
                             border: `2px solid ${heldDice[index] ? '#2E7D32' : '#333'}`,
                             borderRadius: '8px',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
                             fontSize: '24px',
-                            cursor: 'pointer',
+                            cursor: lockedDice[index] ? 'not-allowed' : 'pointer',
                             transition: 'all 0.3s',
                             transform: heldDice[index] ? 'scale(1.1)' : 'scale(1)'
                         }}
@@ -118,15 +146,15 @@ const DiceGame = () => {
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
                 <button 
                     onClick={rollDice} 
-                    disabled={isRolling}
+                    disabled={isRolling || !bValidHold}
                     style={{
                         padding: '10px 20px',
                         fontSize: '18px',
-                        backgroundColor: (isRolling) ? '#cccccc' : '#2196F3',
+                        backgroundColor: (isRolling || !bValidHold) ? '#cccccc' : '#2196F3',
                         color: 'white',
                         border: 'none',
                         borderRadius: '5px',
-                        cursor: (isRolling) ? 'not-allowed' : 'pointer'
+                        cursor: (isRolling || !bValidHold) ? 'not-allowed' : 'pointer'
                     }}
                 >
                     {isRolling ? 'Rolling...' : 'Roll Dice'}
@@ -151,6 +179,7 @@ const DiceGame = () => {
             <div style={{ marginTop: '20px' }}>
                 <p>Click dice to hold/unhold them</p>
                 <p>Held dice won't be rolled again</p>
+                <p>{numberOfTurns}</p>
             </div>
         </div>
     );
