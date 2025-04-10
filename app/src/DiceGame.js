@@ -9,6 +9,7 @@ const DiceGame = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [bValidHold, setValid] = useState(true);
+    const [score, setScore] = useState(0);
 
     // Fetch initial state with error handling
     useEffect(() => {
@@ -39,13 +40,15 @@ const DiceGame = () => {
 
     const toggleHold = async (index) => {
         try {
-            const response = await fetch(`http://localhost:8080/api/hold/${index}`, {
-                method: 'POST'
-            });
-            setValid(await response.json());
-            const newHeld = [...heldDice];
-            newHeld[index] = !newHeld[index];
-            setHeldDice(newHeld);
+            if(!lockedDice[index] && dice[1] !== 0) {
+                const response = await fetch(`http://localhost:8080/api/hold/${index}`, {
+                    method: 'POST'
+                });
+                setValid(await response.json());
+                const newHeld = [...heldDice];
+                newHeld[index] = !newHeld[index];
+                setHeldDice(newHeld);
+            }
         } catch (error) {
             console.error("Error toggling hold:", error);
         }
@@ -62,10 +65,24 @@ const DiceGame = () => {
                     body: JSON.stringify(heldDice)
                 });
                 const newLockedDice = await response.json();
-                setLockedDice(newLockedDice);
+                var diceToLock = lockedDice;
+                for(var i = 0; i < newLockedDice.length; i++) {
+                    if(newLockedDice[i]) {
+                        diceToLock[i] = newLockedDice[i]
+                    }
+                }
+                setLockedDice(diceToLock);
+                setHeldDice([false, false, false, false, false, false]);
+
+                if(bValidHold) {
+                    const responseScore = await fetch(`http://localhost:8080/api/score/${score}`, {
+                        method: 'POST'
+                    });
+                    setScore(await responseScore.json());
+                }
             }
 
-            const indicesToRoll = dice.map((_, i) => i).filter(i => !heldDice[i]);
+            const indicesToRoll = dice.map((_, i) => i).filter(i => !heldDice[i] && !lockedDice[i]);
             const response = await fetch('http://localhost:8080/api/roll', {
                 method: 'POST',
                 headers: {
@@ -90,7 +107,9 @@ const DiceGame = () => {
             });
             setDice([0, 0, 0, 0, 0, 0]);
             setHeldDice([false, false, false, false, false, false]);
+            setLockedDice([false, false, false, false, false, false]);
             setNumberOfTurns(0);
+            setScore(0);
         } catch (error) {
             console.error("Error resetting game:", error);
         }
@@ -135,7 +154,7 @@ const DiceGame = () => {
                             fontSize: '24px',
                             cursor: lockedDice[index] ? 'not-allowed' : 'pointer',
                             transition: 'all 0.3s',
-                            transform: heldDice[index] ? 'scale(1.1)' : 'scale(1)'
+                            transform: heldDice[index] && !lockedDice[index] ? 'scale(1.1)' : 'scale(1)'
                         }}
                     >
                         {value}
@@ -180,6 +199,7 @@ const DiceGame = () => {
                 <p>Click dice to hold/unhold them</p>
                 <p>Held dice won't be rolled again</p>
                 <p>{numberOfTurns}</p>
+                <p>Score:{score}</p>
             </div>
         </div>
     );
