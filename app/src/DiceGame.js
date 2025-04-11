@@ -9,7 +9,9 @@ const DiceGame = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [bValidHold, setValid] = useState(true);
-    const [score, setScore] = useState(0);
+    const [roundScore, setRoundScore] = useState(0);
+    const [totalScore, setTotalScore] = useState(0);
+    const [gameOver, setIsGameOver] = useState(false);
 
     // Fetch initial state with error handling
     useEffect(() => {
@@ -75,10 +77,10 @@ const DiceGame = () => {
                 setHeldDice([false, false, false, false, false, false]);
 
                 if(bValidHold) {
-                    const responseScore = await fetch(`http://localhost:8080/api/score/${score}`, {
+                    const responseScore = await fetch(`http://localhost:8080/api/score/${roundScore}`, {
                         method: 'POST'
                     });
-                    setScore(await responseScore.json());
+                    setRoundScore(await responseScore.json());
                 }
             }
 
@@ -93,6 +95,18 @@ const DiceGame = () => {
             const newDice = await response.json();
             setDice(newDice);
             setNumberOfTurns(prev => prev + 1);
+            const newRolls = newDice.filter((_, i) => !lockedDice[i]);
+            const responseGameOver = await fetch(`http://localhost:8080/api/checkGameOver`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newRolls)
+            });
+            setIsGameOver(await responseGameOver.json());
+            if(gameOver) {
+                resetGame();
+            }
         } catch (error) {
             console.error("Error rolling dice:", error);
         } finally {
@@ -109,7 +123,31 @@ const DiceGame = () => {
             setHeldDice([false, false, false, false, false, false]);
             setLockedDice([false, false, false, false, false, false]);
             setNumberOfTurns(0);
-            setScore(0);
+            setRoundScore(0);
+        } catch (error) {
+            console.error("Error resetting game:", error);
+        }
+    };
+
+    const endRound = async () => {
+        try {
+            await fetch('http://localhost:8080/api/reset', {
+                method: 'POST'
+            });
+
+            if(bValidHold) {
+                const responseScore = await fetch(`http://localhost:8080/api/score/${roundScore}`, {
+                    method: 'POST'
+                });
+                setRoundScore(await responseScore.json());
+            }
+
+            setDice([0, 0, 0, 0, 0, 0]);
+            setHeldDice([false, false, false, false, false, false]);
+            setLockedDice([false, false, false, false, false, false]);
+            setNumberOfTurns(0);
+            setTotalScore(roundScore)
+            setRoundScore(0);
         } catch (error) {
             console.error("Error resetting game:", error);
         }
@@ -193,13 +231,30 @@ const DiceGame = () => {
                 >
                     Reset Game
                 </button>
+
+                <button 
+                    onClick={endRound}
+                    style={{
+                        padding: '10px 20px',
+                        fontSize: '18px',
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer'
+                    }}
+                >
+                    End Round
+                </button>
             </div>
             
             <div style={{ marginTop: '20px' }}>
                 <p>Click dice to hold/unhold them</p>
                 <p>Held dice won't be rolled again</p>
-                <p>{numberOfTurns}</p>
-                <p>Score:{score}</p>
+                <p>Turn: {numberOfTurns}</p>
+                <p>Round Score: {roundScore}</p>
+                <p>Total Score: {totalScore}</p>
+                <p>GameOver: {gameOver.toString()}</p>
             </div>
         </div>
     );
