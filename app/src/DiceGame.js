@@ -44,8 +44,11 @@ const DiceGame = () => {
 
     const toggleHold = async (index) => {
         try {
-            const heldDices = dice.filter((_, i) => heldDice[i] || i === index);
+            const newHeld = [...heldDice];
+            newHeld[index] = !newHeld[index];
+            const heldDices = dice.filter((_, i) => newHeld[i]);
             if(!lockedDice[index] && dice[1] !== 0) {
+                if(heldDices.length > 0) {
                 const response = await fetch(`http://localhost:8080/api/hold`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -53,10 +56,7 @@ const DiceGame = () => {
                 });
                 const bValid = await response.json();
                 setValid(bValid);
-                const newHeld = [...heldDice];
-                newHeld[index] = !newHeld[index];
                 setHeldDice(newHeld);
-
                 if(bValid) {
                 const heldRoll = dice.filter((_, i) => newHeld[i] && !lockedDice[i]);
                 const responseScore = await fetch(`http://localhost:8080/api/score/${tmpScore}`, {
@@ -65,6 +65,10 @@ const DiceGame = () => {
                     body: JSON.stringify(heldRoll)
                 });
                 setTmpScore(await responseScore.json())
+            }
+            } else {
+                setTmpScore(0);
+                setHeldDice(heldDices);
             }
 
             }
@@ -90,6 +94,13 @@ const DiceGame = () => {
                     }
                 }
                 setLockedDice(diceToLock);
+                const iLockedDices = diceToLock.filter(val => val === true).length;
+                // alle 6 Wuerfel erfolgreich
+                if(iLockedDices === 6) {
+                    setLockedDice([false, false, false, false, false, false]);
+                    setHeldDice([false, false, false, false, false, false]);
+                    setDice([0,0,0,0,0,0]);
+                }
                 setHeldDice([false, false, false, false, false, false]);
                 setRoundScore(prev => prev + tmpScore);
                 setTmpScore(0);
@@ -103,6 +114,9 @@ const DiceGame = () => {
             } else {
                 indicesToRoll = dice.map((_, i) => i).filter(i => !heldDice[i] && !lockedDice[i]);
             }
+            if(!heldDice.includes(false)) {
+                indicesToRoll = ([0,1,2,3,4,5]);
+            }
             const response = await fetch('http://localhost:8080/api/roll', {
                 method: 'POST',
                 headers: {
@@ -113,7 +127,13 @@ const DiceGame = () => {
             const newDice = await response.json();
             setDice(newDice);
             setNumberOfTurns(prev => prev + 1);
-            const newRolls = newDice.filter((_, i) => !lockedDice[i]);
+            var newRolls;
+            if(diceToLock) {
+                newRolls = newDice.filter((_, i) => !diceToLock[i]);
+            } else {
+                newRolls = newDice;
+            }
+            
             const responseGameOver = await fetch(`http://localhost:8080/api/checkGameOver`, {
                 method: 'POST',
                 headers: {
@@ -195,8 +215,8 @@ const DiceGame = () => {
             } */
 
             /* setDice([0, 0, 0, 0, 0, 0]); */
-            setHeldDice([false, false, false, false, false, false]);
-            setLockedDice([false, false, false, false, false, false]);
+            /* setHeldDice([false, false, false, false, false, false]);
+            setLockedDice([false, false, false, false, false, false]); */
             setNumberOfTurns(0);
             setIsOpen(true);
             /* setTotalScore(prev => prev + roundScore) */
@@ -287,10 +307,11 @@ const DiceGame = () => {
 
                 <button 
                     onClick={endRound}
+                    disabled={tmpScore + roundScore < 350}
                     style={{
                         padding: '10px 20px',
                         fontSize: '18px',
-                        backgroundColor: '#f44336',
+                        backgroundColor: tmpScore + roundScore < 350 ?  '#cccccc' : '#f44336',
                         color: 'white',
                         border: 'none',
                         borderRadius: '5px',
