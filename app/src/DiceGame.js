@@ -114,7 +114,7 @@ const DiceGame = () => {
             } else {
                 indicesToRoll = dice.map((_, i) => i).filter(i => !heldDice[i] && !lockedDice[i]);
             }
-            if(!heldDice.includes(false)) {
+            if(!heldDice.includes(false) || indicesToRoll.length == 0) {
                 indicesToRoll = ([0,1,2,3,4,5]);
             }
             const response = await fetch('http://localhost:8080/api/roll', {
@@ -162,6 +162,7 @@ const DiceGame = () => {
             setLockedDice([false, false, false, false, false, false]);
             setNumberOfTurns(0);
             setRoundScore(0);
+            setTotalScore(0);
             setIsOpen(false);
         } catch (error) {
             console.error("Error resetting game:", error);
