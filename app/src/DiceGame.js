@@ -44,16 +44,20 @@ const DiceGame = () => {
 
     const toggleHold = async (index) => {
         try {
+            const heldDices = dice.filter((_, i) => heldDice[i] || i === index);
             if(!lockedDice[index] && dice[1] !== 0) {
-                const response = await fetch(`http://localhost:8080/api/hold/${index}`, {
-                    method: 'POST'
+                const response = await fetch(`http://localhost:8080/api/hold`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(heldDices)
                 });
-                setValid(await response.json());
+                const bValid = await response.json();
+                setValid(bValid);
                 const newHeld = [...heldDice];
                 newHeld[index] = !newHeld[index];
                 setHeldDice(newHeld);
 
-                if(bValidHold) {
+                if(bValid) {
                 const heldRoll = dice.filter((_, i) => newHeld[i] && !lockedDice[i]);
                 const responseScore = await fetch(`http://localhost:8080/api/score/${tmpScore}`, {
                     method: 'POST',
@@ -190,9 +194,9 @@ const DiceGame = () => {
                 setIsOpen(true);
             } */
 
-            /* setDice([0, 0, 0, 0, 0, 0]);
+            /* setDice([0, 0, 0, 0, 0, 0]); */
             setHeldDice([false, false, false, false, false, false]);
-            setLockedDice([false, false, false, false, false, false]); */
+            setLockedDice([false, false, false, false, false, false]);
             setNumberOfTurns(0);
             setIsOpen(true);
             /* setTotalScore(prev => prev + roundScore) */
