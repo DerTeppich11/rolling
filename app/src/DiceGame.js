@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+const API_BASE_URL = 'http://localhost:8080/api';
+
 const DiceGame = () => {
     const [dice, setDice] = useState([1, 1, 1, 1, 1, 1]);
     const [heldDice, setHeldDice] = useState([false, false, false, false, false, false]);
@@ -19,7 +21,7 @@ const DiceGame = () => {
     useEffect(() => {
         const fetchInitialState = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/dice');
+                const response = await fetch(`${API_BASE_URL}/dice`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch dice');
                 }
@@ -49,7 +51,7 @@ const DiceGame = () => {
             const heldDices = dice.filter((_, i) => newHeld[i]);
             if(!lockedDice[index] && dice[1] !== 0) {
                 if(heldDices.length > 0) {
-                const response = await fetch(`http://localhost:8080/api/hold`, {
+                const response = await fetch(`${API_BASE_URL}/hold`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(heldDices)
@@ -59,7 +61,7 @@ const DiceGame = () => {
                 setHeldDice(newHeld);
                 if(bValid) {
                 const heldRoll = dice.filter((_, i) => newHeld[i] && !lockedDice[i]);
-                const responseScore = await fetch(`http://localhost:8080/api/score/${tmpScore}`, {
+                const responseScore = await fetch(`${API_BASE_URL}/score/${tmpScore}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(heldRoll)
@@ -81,7 +83,7 @@ const DiceGame = () => {
         setIsRolling(true);
         try {
             if (heldDice.includes(true)) {
-                const response = await fetch('http://localhost:8080/api/lock-dice', {
+                const response = await fetch(`${API_BASE_URL}/lock-dice`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(heldDice)
@@ -114,10 +116,10 @@ const DiceGame = () => {
             } else {
                 indicesToRoll = dice.map((_, i) => i).filter(i => !heldDice[i] && !lockedDice[i]);
             }
-            if(!heldDice.includes(false) || indicesToRoll.length == 0) {
+            if(!heldDice.includes(false) || indicesToRoll.length === 0) {
                 indicesToRoll = ([0,1,2,3,4,5]);
             }
-            const response = await fetch('http://localhost:8080/api/roll', {
+            const response = await fetch(`${API_BASE_URL}/roll`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -128,13 +130,13 @@ const DiceGame = () => {
             setDice(newDice);
             setNumberOfTurns(prev => prev + 1);
             var newRolls;
-            if(diceToLock) {
-                newRolls = newDice.filter((_, i) => !diceToLock[i]);
+            if(indicesToRoll.length > 0) {
+                newRolls = indicesToRoll.map(index => newDice[index]);
             } else {
                 newRolls = newDice;
             }
             
-            const responseGameOver = await fetch(`http://localhost:8080/api/checkGameOver`, {
+            const responseGameOver = await fetch(`${API_BASE_URL}/checkGameOver`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -143,7 +145,7 @@ const DiceGame = () => {
             });
             isGameOver = await responseGameOver.json();
             if(isGameOver) {
-                gameOverM();
+                gameOver();
             }
         } catch (error) {
             console.error("Error rolling dice:", error);
@@ -154,7 +156,7 @@ const DiceGame = () => {
 
     const resetGame = async () => {
         try {
-            await fetch('http://localhost:8080/api/reset', {
+            await fetch(`${API_BASE_URL}/reset`, {
                 method: 'POST'
             });
             setDice([0, 0, 0, 0, 0, 0]);
@@ -171,17 +173,6 @@ const DiceGame = () => {
 
     const endRound = async () => {
         try {
-            /* await fetch('http://localhost:8080/api/reset', {
-                method: 'POST'
-            }); */
-
-            /* if(bValidHold) {
-                const responseScore = await fetch(`http://localhost:8080/api/score/${roundScore}`, {
-                    method: 'POST'
-                });
-                setRoundScore(await responseScore.json());
-            } */
-
             if(isGameOver) {
                 setIsOpen(true);
             }
@@ -198,29 +189,10 @@ const DiceGame = () => {
         }
     };
 
-    const gameOverM = async () => {
+    const gameOver = async () => {
         try {
-            /* await fetch('http://localhost:8080/api/reset', {
-                method: 'POST'
-            }); */
-
-            /* if(bValidHold) {
-                const responseScore = await fetch(`http://localhost:8080/api/score/${roundScore}`, {
-                    method: 'POST'
-                });
-                setRoundScore(await responseScore.json());
-            } */
-
-          /*   if(isGameOver) {
-                setIsOpen(true);
-            } */
-
-            /* setDice([0, 0, 0, 0, 0, 0]); */
-            /* setHeldDice([false, false, false, false, false, false]);
-            setLockedDice([false, false, false, false, false, false]); */
             setNumberOfTurns(0);
             setIsOpen(true);
-            /* setTotalScore(prev => prev + roundScore) */
             setRoundScore(0);
         } catch (error) {
             console.error("Error resetting game:", error);
